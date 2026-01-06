@@ -1,0 +1,199 @@
+// Schema untuk Manajemen Uji Kompetensi Keahlian
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Model User untuk autentikasi
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String   // Password hashed
+  role      UserRole
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relasi ke model lain
+  guru      Guru?
+  siswa     Siswa?
+
+  @@index([email])
+  @@index([role])
+}
+
+// Enum untuk Role
+enum UserRole {
+  ADMIN
+  GURU
+  SISWA
+}
+
+// Model Guru
+model Guru {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  nip         String   @unique
+  nama        String
+  jenisKelamin JenisKelamin
+  statusGuru  StatusGuru @default(GURU_BIASA)
+  noTelepon   String?
+  alamat      String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relasi
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jadwalBimbingan    JadwalBimbingan[]
+  absensiBimbingan   AbsensiBimbingan[]
+  nilaiBimbingan     NilaiBimbingan[]
+
+  @@index([nip])
+  @@index([statusGuru])
+}
+
+enum JenisKelamin {
+  LAKI_LAKI
+  PEREMPUAN
+}
+
+enum StatusGuru {
+  GURU_BIASA
+  PEMBIMBING
+}
+
+// Model Siswa
+model Siswa {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  nis         String   @unique
+  nama        String
+  jenisKelamin JenisKelamin
+  kelasId     String
+  noTelepon   String?
+  alamat      String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relasi
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kelas       Kelas   @relation(fields: [kelasId], references: [id])
+  jadwalBimbingan    JadwalBimbingan[]
+  absensiBimbingan   AbsensiBimbingan[]
+  nilaiBimbingan     NilaiBimbingan[]
+
+  @@index([nis])
+  @@index([kelasId])
+}
+
+// Model Kelas
+model Kelas {
+  id          String   @id @default(cuid())
+  namaKelas   String   @unique
+  tingkat     String   // X, XI, XII
+  jurusan     String   // Contoh: RPL, TKJ, AKL
+  waliKelasId String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relasi
+  siswa       Siswa[]
+
+  @@index([namaKelas])
+  @@index([tingkat])
+  @@index([jurusan])
+}
+
+// Model Jadwal Bimbingan
+model JadwalBimbingan {
+  id            String   @id @default(cuid())
+  guruId        String
+  siswaId       String
+  mataBimbingan String
+  tanggal       DateTime
+  jamMulai      String   // Format: HH:mm
+  jamSelesai    String   // Format: HH:mm
+  ruang         String?
+  topik         String?
+  status        StatusJadwal @default(SCHEDULED)
+  catatan       String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relasi
+  guru          Guru              @relation(fields: [guruId], references: [id])
+  siswa         Siswa             @relation(fields: [siswaId], references: [id])
+  absensi       AbsensiBimbingan?
+  nilai         NilaiBimbingan?
+
+  @@index([guruId])
+  @@index([siswaId])
+  @@index([tanggal])
+  @@index([status])
+}
+
+enum StatusJadwal {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+}
+
+// Model Absensi Bimbingan
+model AbsensiBimbingan {
+  id          String   @id @default(cuid())
+  jadwalId    String   @unique
+  guruId      String
+  siswaId     String
+  kehadiran   StatusKehadiran
+  waktuMasuk  DateTime?
+  waktuKeluar DateTime?
+  catatan     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relasi
+  jadwal      JadwalBimbingan @relation(fields: [jadwalId], references: [id])
+  guru        Guru             @relation(fields: [guruId], references: [id])
+  siswa       Siswa            @relation(fields: [siswaId], references: [id])
+
+  @@index([jadwalId])
+  @@index([siswaId])
+  @@index([kehadiran])
+}
+
+enum StatusKehadiran {
+  HADIR
+  IZIN
+  SAKIT
+  ALPHA
+}
+
+// Model Nilai Bimbingan
+model NilaiBimbingan {
+  id          String   @id @default(cuid())
+  jadwalId    String   @unique
+  guruId      String
+  siswaId     String
+  nilaiPraktik Float?
+  nilaiTeori   Float?
+  nilaiAkhir   Float?
+  keterangan  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relasi
+  jadwal      JadwalBimbingan @relation(fields: [jadwalId], references: [id])
+  guru        Guru             @relation(fields: [guruId], references: [id])
+  siswa       Siswa            @relation(fields: [siswaId], references: [id])
+
+  @@index([jadwalId])
+  @@index([siswaId])
+}
